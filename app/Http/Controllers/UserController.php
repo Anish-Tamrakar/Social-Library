@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules;
 
 class UserController extends Controller
 {
@@ -31,17 +34,26 @@ class UserController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'bio' => 'nullable|string',
-            'profile_picture' => 'nullable|image|max:2048',
+            'name'            => ['required', 'string', 'max:255'],
+            'email'           => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'bio'             => ['nullable', 'string'],
+            'profile_picture' => ['nullable', 'image', 'max:2048'],
+            'password'        => ['nullable', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user->name = $request->name;
-        $user->bio = $request->bio;
+        $user->name  = $request->name;
+        $user->email = strtolower($request->email);
+        $user->bio   = $request->bio;
 
         if ($request->hasFile('profile_picture')) {
-            $path = $request->file('profile_picture')->store('profiles', 'public');
-            $user->profile_picture = $path;
+            if ($user->profile_picture) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+            $user->profile_picture = $request->file('profile_picture')->store('avatars', 'public');
+        }
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
         }
 
         $user->save();

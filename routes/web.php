@@ -21,6 +21,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::get('/browse', [BookController::class, 'index'])->name('books.index');
+Route::get('/search/suggestions', [BookController::class, 'suggestions'])->name('search.suggestions');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 Route::get('/books/{book}/read', [BookController::class, 'read'])->name('books.read');
 Route::get('/author/{id}', [\App\Http\Controllers\UserController::class, 'publicProfile'])->name('author.profile');
@@ -33,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
     Route::post('/books/{book}/favorite', [BookController::class, 'toggleFavorite'])->name('books.favorite');
     Route::post('/books/{book}/rate', [BookController::class, 'rate'])->name('books.rate');
+    Route::delete('/books/{book}/review', [BookController::class, 'deleteReview'])->name('books.review.delete');
     Route::post('/books', [BookController::class, 'store'])->name('books.store');
     Route::delete('/books/{book}', [BookController::class, 'destroy'])->name('books.destroy');
     Route::post('/authors/{user}/donate', [BookController::class, 'donate'])->name('authors.donate');

@@ -1,315 +1,413 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="fixed inset-0 z-50 bg-zinc-950 flex flex-col animate-fade-in" id="fullscreen-reader">
-    <!-- Top Action Bar -->
-    <div class="flex-none h-16 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-6 shadow-md z-30">
-        <a href="{{ route('books.show', $book->id) }}" class="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 px-3 py-2 rounded-xl transition-all">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Exit Reader
+<div class="fixed inset-0 z-50 bg-zinc-950 flex flex-col" id="fullscreen-reader">
+
+    <!-- Top Bar -->
+    <div class="flex-none h-14 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 md:px-6 z-30 gap-4">
+
+        <a href="{{ route('books.show', $book->id) }}"
+           class="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 px-3 py-1.5 rounded-lg transition-all flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            <span class="hidden sm:inline">Exit Reader</span>
         </a>
 
-        <div class="flex items-center gap-4 text-zinc-400 font-medium truncate max-w-md absolute left-1/2 -translate-x-1/2">
-            <span class="text-sm truncate font-serif italic tracking-wide"><span class="text-white">{{ $book->title }}</span></span>
+        <div class="flex-1 min-w-0 text-center">
+            <span class="text-sm font-medium text-zinc-400 truncate font-serif italic">{{ $book->title }}</span>
         </div>
 
-        <div class="flex items-center gap-3">
-            <span id="page-info" class="text-sm font-medium text-zinc-500 w-24 text-right tabular-nums tracking-wider">- / -</span>
+        <div class="flex items-center gap-1 flex-shrink-0">
+            @if($book->pdf_path && Storage::disk('public')->exists($book->pdf_path) && $book->pdf_path != 'dummy.pdf')
+            <button id="zoom-out-btn" title="Zoom Out (-)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+            </button>
+            <button id="zoom-reset-btn" title="Reset Zoom (0)"
+                    class="min-w-[3.5rem] h-8 px-2 flex items-center justify-center rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all tabular-nums">
+                <span id="zoom-level">120%</span>
+            </button>
+            <button id="zoom-in-btn" title="Zoom In (+)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </button>
+            <div class="w-px h-5 bg-zinc-700 mx-1"></div>
+            @endif
+            <span id="page-info" class="text-sm font-medium text-zinc-500 w-20 text-right tabular-nums">- / -</span>
         </div>
     </div>
 
     <!-- Reader Container -->
-    <div class="flex-1 relative overflow-hidden flex justify-center items-center bg-zinc-900" id="reader-container">
-        <!-- Wood/Desk background subtle effect -->
-        <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), repeating-linear-gradient(45deg, #000 25%, #18181b 25%, #18181b 75%, #000 75%, #000); background-position: 0 0, 10px 10px; background-size: 20px 20px;"></div>
+    <div class="flex-1 relative overflow-hidden bg-zinc-900" id="reader-container">
 
-        <!-- Book Wrapper -->
-        <div id="book-wrapper" class="relative z-10 transition-transform duration-500 will-change-transform drop-shadow[[0_25px_35px_rgba(0,0,0,0.5)]" style="opacity: 0; transform: scale(0.95) translateY(20px);">
-            @if($book->pdf_path && Storage::disk('public')->exists($book->pdf_path) && $book->pdf_path != 'dummy.pdf')
-                <div id="flipbook" class="bg-transparent rounded-sm relative"></div>
-            @else
-                <div class="w-full h-full bg-white flex items-center justify-center rounded-xl p-10">
-                    <div class="flex flex-col items-center justify-center text-zinc-500">
-                        <svg class="w-16 h-16 text-zinc-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        <p class="text-xl font-medium text-zinc-900 mb-2 whitespace-nowrap">No PDF Uploaded</p>
-                    </div>
+        <div class="absolute inset-0 pointer-events-none opacity-[0.03]"
+             style="background-image: repeating-linear-gradient(0deg, transparent, transparent 28px, #71717a 28px, #71717a 29px); background-size: 100% 29px;"></div>
+
+        <!-- Scrollable viewport -->
+        <div class="absolute inset-0 overflow-auto" id="reader-viewport">
+            <div id="scroll-spacer" class="flex justify-center items-center" style="min-width: 100%; min-height: 100%;">
+                <div id="book-wrapper" class="relative z-10" style="opacity: 0; transform: scale(0.96);">
+                    @if($book->pdf_path && Storage::disk('public')->exists($book->pdf_path) && $book->pdf_path != 'dummy.pdf')
+                        <div id="flipbook"></div>
+                    @else
+                        <div class="w-96 h-64 bg-white rounded-xl flex flex-col items-center justify-center gap-3 text-zinc-400 border border-zinc-200">
+                            <svg class="w-10 h-10 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                            <p class="text-base font-semibold text-zinc-700">No PDF available</p>
+                        </div>
+                    @endif
                 </div>
-            @endif
+            </div>
         </div>
 
         <!-- Loading overlay -->
-        <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 transition-opacity duration-700 z-50">
-            <div class="relative w-16 h-16 flex items-center justify-center mb-6 text-accent-500">
-                <svg class="animate-spin absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
-                    <path fill="currentColow" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+        <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 z-40 transition-opacity duration-500">
+            <svg class="animate-spin w-8 h-8 text-zinc-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span id="loading-text" class="text-sm font-medium text-zinc-400 tracking-wide">Opening book...</span>
+            <div class="w-40 h-0.5 bg-zinc-800 rounded-full mt-4 overflow-hidden">
+                <div id="loading-progress" class="h-full bg-zinc-500 w-0 transition-all duration-300 rounded-full"></div>
             </div>
-            <span id="loading-text" class="font-medium tracking-wide text-zinc-300">Opening Book...</span>
-            <div class="w-48 h-1 bg-zinc-800 rounded-full mt-4 overflow-hidden"><div id="loading-progress" class="h-full bg-accent-500 w-0 transition-all duration-300"></div></div>
         </div>
 
-        <button id="prev-page" title="Previous Page (Left Arrow)" class="group absolute left-4 md:left-10 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-zinc-900/50 border border-white/10 text-white flex items-center justify-center hover:bg-zinc-800/80 transition-all backdrop-blur-md z-20 hover:scale-105 shadow-xl disabled:opacity-0 disabled:pointer-events-none">
-            <svg class="w-6 h-6 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColow">8path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        <!-- Nav buttons -->
+        <button id="prev-page" title="Previous Page (←)"
+                class="group absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl bg-zinc-900/60 border border-white/10 text-white flex items-center justify-center hover:bg-zinc-800 transition-all backdrop-blur-sm z-20 disabled:opacity-0 disabled:pointer-events-none">
+            <svg class="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
         </button>
-
-        <button id="next-page" title="Next Page (Right Arrow)" class="group absolute right-4 md:right-10 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-zinc-900/50 border border-white/10 text-white flex items-center justify-center hover:bg-zinc-800/80 transition-all backdrop-blur-md z-20 hover:scale-105 shadow-xl disabled:opacity-0 disabled:pointer-events-none">
-            <svg class="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        <button id="next-page" title="Next Page (→)"
+                class="group absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl bg-zinc-900/60 border border-white/10 text-white flex items-center justify-center hover:bg-zinc-800 transition-all backdrop-blur-sm z-20 disabled:opacity-0 disabled:pointer-events-none">
+            <svg class="w-5 h-5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
         </button>
     </div>
 </div>
 
 @if($book->pdf_path && Storage::disk('public')->exists($book->pdf_path) && $book->pdf_path != 'dummy.pdf')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null;
+    // ── State ───────────────────────────────────────────────────────────────
+
+    let pdfDoc     = null;
     let totalPages = 0;
-    let totalFlipPages = 0;
-    let bookWidth = 0;
-    let bookHeight = 0;
+    let pgW        = 0;   // single-page width
+    let pgH        = 0;   // page height
+    let fitScale   = 1;
+    let userZoom   = 1.2;
+    let pageFlip   = null;
 
-    const url = @json(asset('storage/' . $book->pdf_path));
-    const bookTitle = @json($book->title);
-    const bookAuthor = @json($book->author_name ?? $book->author->name ?? 'Unknown Author');
+    const ZOOM_MIN  = 0.4;
+    const ZOOM_MAX  = 2.5;
+    const ZOOM_STEP = 0.1;
 
-    const flipbook = $('#flipbook');
-    const bookWrapper = $('#book-wrapper');
-    const loading = $('#loading');
-    const prevBtn = $('#prev-page');
-    const nextBtn = $('#next-page');
+    const url        = @json(asset('storage/' . $book->pdf_path));
+    const bookTitle  = @json($book->title);
+    const bookAuthor = @json($book->author->name ?? 'Unknown Author');
 
-    async function renderPage(flipbookPageNum) {
-        const pdfPageNum = flipbookPageNum - 2;
+    // ── DOM refs ────────────────────────────────────────────────────────────
 
-        if (pdfPageNum < 1 || pdfPageNum > totalPages) return;
+    const flipbookEl      = document.getElementById('flipbook');
+    const bookWrapper     = document.getElementById('book-wrapper');
+    const scrollSpacer    = document.getElementById('scroll-spacer');
+    const readerContainer = document.getElementById('reader-container');
+    const readerViewport  = document.getElementById('reader-viewport');
+    const loadingEl       = document.getElementById('loading');
+    const prevBtn         = document.getElementById('prev-page');
+    const nextBtn         = document.getElementById('next-page');
 
-        const div = document.getElementById('page-container-' + pdfPageNum);
-        if (!div) return;
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-        if (div.dataset.rendered === 'true' || div.dataset.rendering === 'true') return;
-        div.dataset.rendering = 'true';
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function setProgress(n) {
+        document.getElementById('loading-progress').style.width = n + '%';
+    }
+
+    // ── Zoom ────────────────────────────────────────────────────────────────
+
+    function computeFitScale() {
+        const pad = window.innerWidth > 768 ? 100 : 32;
+        const sw  = (readerContainer.clientWidth  - pad * 2) / (pgW * 2);
+        const sh  = (readerContainer.clientHeight - pad)     / pgH;
+        return Math.min(sw, sh, 1.2);
+    }
+
+    function applyScale() {
+        if (!pgW || !pgH) return;
+        fitScale       = computeFitScale();
+        const scale    = fitScale * userZoom;
+        const bookW    = pgW * 2;
+        const effW     = Math.ceil(bookW * scale);
+        const effH     = Math.ceil(pgH   * scale);
+        const cW       = readerContainer.clientWidth;
+        const cH       = readerContainer.clientHeight;
+        const pad      = 60;
+
+        scrollSpacer.style.minWidth  = Math.max(effW + pad * 2, cW) + 'px';
+        scrollSpacer.style.minHeight = Math.max(effH + pad * 2, cH) + 'px';
+        bookWrapper.style.transform  = 'scale(' + scale + ')';
+    }
+
+    function resizeBook() { applyScale(); }
+
+    function centerViewport() {
+        requestAnimationFrame(function () {
+            readerViewport.scrollLeft = (readerViewport.scrollWidth  - readerViewport.clientWidth)  / 2;
+            readerViewport.scrollTop  = (readerViewport.scrollHeight - readerViewport.clientHeight) / 2;
+        });
+    }
+
+    function updateZoomUI() {
+        document.getElementById('zoom-level').textContent = Math.round(userZoom * 100) + '%';
+        document.getElementById('zoom-out-btn').disabled  = userZoom <= ZOOM_MIN;
+        document.getElementById('zoom-in-btn').disabled   = userZoom >= ZOOM_MAX;
+    }
+
+    function zoomIn()    { userZoom = Math.min(+(userZoom + ZOOM_STEP).toFixed(2), ZOOM_MAX); applyScale(); centerViewport(); updateZoomUI(); }
+    function zoomOut()   { userZoom = Math.max(+(userZoom - ZOOM_STEP).toFixed(2), ZOOM_MIN); applyScale(); centerViewport(); updateZoomUI(); }
+    function zoomReset() { userZoom = 1.2; applyScale(); centerViewport(); updateZoomUI(); }
+
+    document.getElementById('zoom-in-btn').addEventListener('click', zoomIn);
+    document.getElementById('zoom-out-btn').addEventListener('click', zoomOut);
+    document.getElementById('zoom-reset-btn').addEventListener('click', zoomReset);
+
+    readerViewport.addEventListener('wheel', function (e) {
+        if (e.ctrlKey || e.metaKey) { e.preventDefault(); e.deltaY < 0 ? zoomIn() : zoomOut(); }
+    }, { passive: false });
+
+    // ── PDF page rendering ──────────────────────────────────────────────────
+
+    async function renderPdfPage(pdfIndex, container) {
+        if (pdfIndex < 0 || pdfIndex >= totalPages) return;
+        if (container.dataset.rendered === 'true' || container.dataset.rendering === 'true') return;
+        container.dataset.rendering = 'true';
 
         try {
-            const page = await pdfDoc.getPage(pdfPageNum);
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+            const page  = await pdfDoc.getPage(pdfIndex + 1);
+            const baseH = 1200;
+            const vp0   = page.getViewport({ scale: 1 });
+            const vp    = page.getViewport({ scale: baseH / vp0.height });
 
-            const viewportUnscaled = page.getViewport({ scale: 1 });
-            const baseHeight = 1200;
-            const scale = baseHeight / viewportUnscaled.height;
-            const viewport = page.getViewport({ scale: scale });
+            const canvas    = document.createElement('canvas');
+            canvas.width    = vp.width;
+            canvas.height   = vp.height;
+            canvas.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;';
 
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            canvas.classList.add('w-full', 'h-full', 'object-contain');
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-
-            let s = div.querySelector('svg'); if(s) s.remove();
-            div.appendChild(canvas);
-            div.dataset.rendered = 'true';
+            const svg = container.querySelector('svg');
+            if (svg) svg.remove();
+            container.appendChild(canvas);
+            container.dataset.rendered = 'true';
         } catch (err) {
-            console.error('Error rendering page ' , pdfPageNum, err);
-            div.innerHTML = `<div class="text-red-500 font-medium bg-red-50 p-4 rounded-xl">Error loading page ${pdfPageNum}</div>`;
-            div.dataset.rendering = 'false';
+            console.error('Render error page ' + pdfIndex, err);
+            container.dataset.rendering = 'false';
         }
     }
 
-    function resizeBook() {
-        if (!bookWidth || !bookHeight) return;
-        const container = $('#reader-container');
-        const padding = $(window).width() > 768 ? 120 : 40;
-
-        const availableWidth = container.width() - padding * 2;
-        const availableHeight = container.height() - padding;
-
-        const scaleW = availableWidth / bookWidth;
-        const scaleH = availableHeight / bookHeight;
-        const scale = Math.min(scaleW, scaleH, 1.2);
-
-        bookWrapper.css('transform', `scale(${scale}) translateY(0)`);
+    function renderNearby(flipPageIndex) {
+        // Pages in flipbook: 0=cover, 1=inner, 2..N+1=pdf, ...
+        for (let offset = -3; offset <= 4; offset++) {
+            const pdfIdx = (flipPageIndex + offset) - 2;
+            if (pdfIdx >= 0 && pdfIdx < totalPages) {
+                const el = document.getElementById('pdf-page-' + pdfIdx);
+                if (el) renderPdfPage(pdfIdx, el);
+            }
+        }
     }
+
+    // ── Page info & nav state ───────────────────────────────────────────────
+
+    function updatePageInfo(flipPageIndex) {
+        const el    = document.getElementById('page-info');
+        const total = pageFlip ? pageFlip.getPageCount() : 0;
+
+        if (flipPageIndex <= 1)           el.textContent = 'Cover';
+        else if (flipPageIndex >= total - 2) el.textContent = 'End';
+        else {
+            const pdfPage = flipPageIndex - 1;
+            el.textContent = pdfPage + ' / ' + totalPages;
+        }
+    }
+
+    function syncNavButtons() {
+        if (!pageFlip) return;
+        const curr   = pageFlip.getCurrentPageIndex();
+        const total  = pageFlip.getPageCount();
+        prevBtn.disabled = curr <= 0;
+        nextBtn.disabled = curr >= total - 2;
+    }
+
+    // ── Init reader ─────────────────────────────────────────────────────────
 
     async function initReader() {
         try {
-            $('#loading-progress').css('width', '20%');
-            pdfDoc = await pdfjsLib.getDocument(url).promise;
+            setProgress(20);
+            pdfDoc     = await pdfjsLib.getDocument(url).promise;
             totalPages = pdfDoc.numPages;
-            $('#loading-progress').css('width', '40%');
+            setProgress(40);
 
-            const page1 = await pdfDoc.getPage(1);
-            const viewport = page1.getViewport({ scale: 850 / page1.getViewport({ scale: 1 }).height });
-            bookHeight = viewport.height;
-            bookWidth = viewport.width * 2;
+            // Measure a page
+            const p1  = await pdfDoc.getPage(1);
+            const vp0 = p1.getViewport({ scale: 1 });
+            const s0  = 850 / vp0.height;
+            const vp1 = p1.getViewport({ scale: s0 });
+            pgW = Math.ceil(vp1.width);
+            pgH = Math.ceil(vp1.height);
 
-            $('#loading-progress').css('width', '60%');
+            setProgress(60);
 
-            let htmlBuffer = `
-                <div class="hard cover-page bg-zinc-800 flex flex-col items-center justify-center p-12 text-center border-r border-zinc-700 shadow-[-10px_0_20px_rgba(0,0,0,0.3)_inset]">
-                    <div class="flex-1 flex flex-col justify-center">
-                        <h1 class="text-3xl md:text-5xl font-serif font-bold text-white mb-6 leading-tight">${bookTitle}</h1>
-                        <p class="text-xl text-zinc-400 font-medium tracking-wide border-t border-zinc-600 pt-6 mt-2 inline-block mx-auto min-w-[50%]">${bookAuthor}</p>
-                    </div>
-                </div>
-            `;
+            // ── Build pages ─────────────────────────────────────────────
 
-            htmlBuffer += `<div class="hard bg-[#fcfcfa] shadow-[10px_0_20px_rgba(0,0,0,0.05)_inset]"></div>`;
+            // Front cover
+            flipbookEl.innerHTML = ''
+                + '<div class="page-item cover-page">'
+                +   '<div style="width:100%;height:100%;background:#27272a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem;text-align:center">'
+                +     '<h1 style="font-family:ui-serif,Georgia,serif;font-size:2rem;font-weight:700;color:#fff;margin:0 0 1.5rem;line-height:1.2">' + esc(bookTitle) + '</h1>'
+                +     '<div style="width:50px;height:2px;background:#52525b;margin:0 auto 1.5rem"></div>'
+                +     '<p style="font-size:0.75rem;color:#a1a1aa;letter-spacing:0.15em;text-transform:uppercase;margin:0">' + esc(bookAuthor) + '</p>'
+                +   '</div>'
+                + '</div>';
 
-            // Document Pages
-            for (let i = 1; i <= totalPages; i++) {
-                const flipbookPageNum = i + 2;
-                let shadowClass = '';
-                if (flipbookPageNum % 2 === 0) {
-                    shadowClass = 'right-0 bg-gradient-to-l from-black/20 to-transparent';
-                } else {
-                    shadowClass = 'left-0 bg-gradient-to-r from-black/20 to-transparent';
-                }
+            // Inner front (blank)
+            flipbookEl.innerHTML += '<div class="page-item"><div style="width:100%;height:100%;background:#fafaf9"></div></div>';
 
-                htmlBuffer += `
-                    <div class="page-wrapper bg-[#fcfcfa]">
-                        <div id="page-container-${i}" class="w-full h-full flex flex-col items-center justify-center relative bg-[#ffffff] text-zinc-400 overflow-hidden">
-                            <div class="absolute inset-y-0 w-16 pointer-events-none z-10 mix-blend-multiply opacity-50 ${shadowClass}"></div>
-                            <svg class="w-8 h-8 opacity-20 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                        </div>
-                    </div>
-                `;
+            // PDF pages
+            for (let i = 0; i < totalPages; i++) {
+                flipbookEl.innerHTML += ''
+                    + '<div class="page-item">'
+                    +   '<div id="pdf-page-' + i + '" style="width:100%;height:100%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">'
+                    +     '<svg style="width:24px;height:24px;opacity:0.08" fill="none" viewBox="0 0 24 24" stroke="#a1a1aa"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>'
+                    +   '</div>'
+                    + '</div>';
             }
 
-            let addedPad = false;
-            if (totalPages % 2 !== 0) {
-                htmlBuffer += `
-                    <div class="page-wrapper bg-[#fcfcfa]">
-                        <div class="w-full h-full relative bg-[#ffffff]">
-                            <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/20 to-transparent pointer-events-none z-10 mix-blend-multiply opacity-50"></div>
-                        </div>
-                    </div>
-                `;
-                addedPad = true;
+            // Pad so middle section (between covers) is even
+            if ((totalPages + 2) % 2 !== 0) {
+                flipbookEl.innerHTML += '<div class="page-item"><div style="width:100%;height:100%;background:#fafaf9"></div></div>';
             }
 
-            htmlBuffer += `<div class="hard bg-[#fcfcfa] shadow-[-10px_0_20px_rgba(0,0,0,0.05)_inset]"></div>`;
-            htmlBuffer += `<div class="hard cover-page bg-zinc-800 border-l border-zinc-700 shadow-[10px_0_20px_rgba(0,0,0,0.3)_inset] flex items-center justify-center"><div class="w-32 h-32 opacity-10 bg-zinc-500 rounded-full flex items-center justify-center"><div class="w-24 h-24 bg-zinc-800 rounded-full border-4 border-zinc-500"></div></div></div>`;
+            // Inner back + back cover
+            flipbookEl.innerHTML += '<div class="page-item"><div style="width:100%;height:100%;background:#fafaf9"></div></div>';
+            flipbookEl.innerHTML += ''
+                + '<div class="page-item cover-page">'
+                +   '<div style="width:100%;height:100%;background:#27272a;display:flex;align-items:center;justify-content:center">'
+                +     '<div style="width:50px;height:50px;border:2px solid #52525b;border-radius:8px;opacity:0.15"></div>'
+                +   '</div>'
+                + '</div>';
 
-            flipbook.html(htmlBuffer);
-            totalFlipPages = totalPages + 4 + (addedPad ? 1 : 0);
+            setProgress(80);
 
-            $('#loading-progress').css('width', '80%');
+            // ── PageFlip init ───────────────────────────────────────────
 
-            flipbook.turn({
-                width: bookWidth,
-                height: bookHeight,
-                autoCenter: false,
-                display: 'double',
-                acceleration: true,
-                elevation: 0,
-                gradients: true,
-                pages: totalFlipPages,
-                when: {
-                    turning: function(event, page, view) {
-                        updateProgressInfo(page);
-                        updateButtons(view[0], view[1]);
-                        view.forEach(p => p && renderPage(p));
-                    },
-                    turned: function(event, page, view) {
-                        view.forEach(p => p && renderPage(p));
-                        setTimeout(() => {
-                            if(view[0]) {
-                                renderPage(view[0] - 1); renderPage(view[0] - 2);
-                                renderPage(view[0] - 3); renderPage(view[0] - 4);
-                            }
-                            if(view[1]) {
-                                renderPage(view[1] + 1); renderPage(view[1] + 2);
-                                renderPage(view[1] + 3); renderPage(view[1] + 4);
-                            }
-                        }, 50);
-                    }
-                }
+            pageFlip = new St.PageFlip(flipbookEl, {
+                width           : pgW,
+                height          : pgH,
+                size            : 'fixed',
+                showCover       : true,
+                maxShadowOpacity: 0.4,
+                showPageCorners : true,
+                mobileScrollSupport: false,
+                useMouseEvents  : true,
+                flippingTime    : 700,
+                startPage       : 0,
+                drawShadow      : true,
+                usePortrait     : false,
+                autoSize        : false,
             });
 
-            $(window).on('resize', resizeBook);
-            resizeBook();
+            pageFlip.loadFromHTML(document.querySelectorAll('#flipbook .page-item'));
 
-            $('#loading-progress').css('width', '100%');
+            pageFlip.on('flip', function (e) {
+                updatePageInfo(e.data);
+                syncNavButtons();
+                renderNearby(e.data);
+            });
 
-            Promise.all([renderPage(3), renderPage(4)]);
+            // Initial setup
+            renderNearby(0);
+            renderNearby(2);
+            renderNearby(3);
 
-            loading.css('opacity', '0').css('pointer-events', 'none');
-            setTimeout(() => loading.hide(), 400);
+            window.addEventListener('resize', resizeBook);
+            applyScale();
+            centerViewport();
+            updateZoomUI();
 
-            bookWrapper.css('opacity', '1');
-          updateProgressInfo(1);
-            updateButtons(1, 0);
+            setProgress(100);
+
+            // Hide loading
+            loadingEl.style.opacity        = '0';
+            loadingEl.style.pointerEvents   = 'none';
+            setTimeout(function () { loadingEl.style.display = 'none'; }, 500);
+
+            // Reveal
+            bookWrapper.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            bookWrapper.style.opacity    = '1';
+            bookWrapper.style.transform  = 'scale(' + (fitScale * userZoom) + ')';
+            setTimeout(function () { bookWrapper.style.transition = 'none'; }, 400);
+
+            updatePageInfo(0);
+            syncNavButtons();
 
         } catch (err) {
             console.error(err);
-            $('#loading-text').text('Failed to load book').addClass('text-red-500');
-            $('#loading .animate-spin').hide();
+            document.getElementById('loading-text').textContent = 'Failed to load book';
+            document.getElementById('loading-text').style.color = '#ef4444';
+            document.querySelector('#loading .animate-spin').style.display = 'none';
         }
     }
 
-    function updateProgressInfo(flipbookPage) {
-        let realPage = Math.max(1, flipbookPage - 2);
-        if (realPage > totalPages) realPage = totalPages;
+    // ── Controls ─────────────────────────────────────────────────────────────
 
-        if (flipbookPage === 1 || flipbookPage === 2) $('#page-info').text(`Cover`);
-        else if (flipbookPage >= totalFlipPages - 1) $('#page-info').text(`End`);
-        else $('#page-info').text(`${realPage} / ${totalPages}`);
-    }
+    prevBtn.addEventListener('click', function () { if (pageFlip) pageFlip.flipPrev(); });
+    nextBtn.addEventListener('click', function () { if (pageFlip) pageFlip.flipNext(); });
 
-    function updateButtons(leftPage, rightPage) {
-        if(leftPage === 1 || rightPage === 1 || (leftPage === 0 && rightPage === 1)) {
-            prevBtn.prop('disabled', true);
-        } else {
-            prevBtn.prop('disabled', false);
+    document.addEventListener('keydown', function (e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        switch (e.key) {
+            case 'ArrowLeft':  if (pageFlip) pageFlip.flipPrev(); break;
+            case 'ArrowRight': if (pageFlip) pageFlip.flipNext(); break;
+            case '+': case '=': zoomIn();    break;
+            case '-': case '_': zoomOut();   break;
+            case '0':           zoomReset(); break;
         }
-
-        if(leftPage === totalFlipPages || rightPage === totalFlipPages) {
-            nextBtn.prop('disabled', true);
-        } else {
-            nextBtn.prop('disabled', false);
-        }
-    }
-
-    prevBtn.click(() => flipbook.turn('previous'));
-    nextBtn.click(() => flipbook.turn('next'));
-
-    $(document).keydown(function(e){
-        if (e.keyCode === 37) flipbook.turn('previous');
-        if (e.keyCode === 39) flipbook.turn('next');
     });
 
-    $(document).ready(() => {
-        initReader();
-    });
+    // ── Boot ─────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', initReader);
 </script>
 
 <style>
     header, footer { display: none !important; }
-    body { background-color: #09090b !important; overflow: hidden !important; }
-    #app { display: block !important; padding: 0 !important; }
-    main { padding: 0 !important; margin: 0 !important; min-height: 100vh; }
+    body   { background: #09090b !important; overflow: hidden !important; }
+    main   { padding: 0 !important; margin: 0 !important; min-height: 100vh; }
 
-    .page-wrapper {
-        border-radius: 2px;
-    }
+    #reader-viewport::-webkit-scrollbar       { width: 6px; height: 6px; }
+    #reader-viewport::-webkit-scrollbar-track  { background: transparent; }
+    #reader-viewport::-webkit-scrollbar-thumb  { background: #3f3f46; border-radius: 9999px; }
 
-    .hard {
-        border-radius: 4px;
-    }
+    #flipbook { user-select: none; -webkit-user-select: none; }
 
-    .page-wrapper:not(.cover-page)::after, .hard:not(.cover-page)::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%5D");
-        pointer-events: none;
-        z-index: 50;
-        mix-blend-mode: multiply;
+    .page-item {
+        background: #fafaf9;
+        overflow: hidden;
     }
 </style>
 @endif

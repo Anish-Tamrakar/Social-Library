@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Book;
 use App\Models\Favorite;
+use App\Models\Rating;
 use App\Models\ReadingHistory;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
     public function index(Request $request)
     {
+        $tab = $request->get('tab', 'books');
+
+        // Books query
         $query = Book::where('status', 'published');
 
-        if ($request->has('search') && $request->search != '') {
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
@@ -24,22 +29,26 @@ class BookController extends Controller
             });
         }
 
-        if ($request->has('genre') && $request->genre != '') {
+        if ($request->filled('genre')) {
             $query->where('genre', $request->genre);
         }
 
-        // Add additional sorting logic if needed
-        $sort = $request->sort ?? 'newest';
-        if ($sort == 'newest') {
-            $query->latest();
-        } else {
-            // Default latest
-            $query->latest();
+        $books = $query->with('author')->latest()->paginate(12)->withQueryString();
+
+        // Authors query
+        $authorQuery = \App\Models\User::where('role', 'author');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $authorQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('bio', 'like', "%{$search}%");
+            });
         }
 
-        $books = $query->with('author')->paginate(12)->withQueryString();
+        $authors = $authorQuery->withCount('books')->orderByDesc('books_count')->paginate(12)->withQueryString();
 
-        return view('books.index', compact('books'));
+        return view('books.index', compact('books', 'authors', 'tab'));
     }
 
     public function show(Book $book)
@@ -48,7 +57,11 @@ class BookController extends Controller
             abort(404);
         }
 
-        return view('books.show', compact('book'));
+        $ratings    = $book->ratings()->with('user')->latest()->get();
+        $userRating = Auth::check() ? $ratings->firstWhere('user_id', Auth::id()) : null;
+        $avgRating  = $ratings->count() > 0 ? round($ratings->avg('rating'), 1) : null;
+
+        return view('books.show', compact('book', 'ratings', 'userRating', 'avgRating'));
     }
 
     public function read(Book $book)
@@ -121,5 +134,73 @@ class BookController extends Controller
         }
         $book->delete();
         return back()->with('success', 'Book deleted successfully.');
+    }
+
+    public function rate(Request $request, Book $book)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'nullable|string|max:2000',
+        ]);
+
+        Rating::updateOrCreate(
+            ['user_id' => Auth::id(), 'book_id' => $book->id],
+            ['rating'  => $request->rating, 'review' => $request->review]
+        );
+
+        return back()->with('review_success', true);
+    }
+
+    public function deleteReview(Book $book)
+    {
+        Rating::where('user_id', Auth::id())->where('book_id', $book->id)->delete();
+        return back();
+    }
+
+    public function suggestions(Request $request)
+    {
+        $q   = trim($request->get('q', ''));
+        $tab = $request->get('tab', 'books');
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        if ($tab === 'authors') {
+            $results = \App\Models\User::where('role', 'author')
+                ->where(function ($query) use ($q) {
+                    $query->where('name', 'like', "%{$q}%")
+                          ->orWhere('bio', 'like', "%{$q}%");
+                })
+                ->withCount('books')
+                ->limit(6)
+                ->get()
+                ->map(fn($a) => [
+                    'type'            => 'author',
+                    'url'             => route('author.profile', $a->id),
+                    'name'            => $a->name,
+                    'books_count'     => $a->books_count,
+                    'profile_picture' => $a->profile_picture ? Storage::url($a->profile_picture) : null,
+                ]);
+        } else {
+            $results = Book::where('status', 'published')
+                ->where(function ($query) use ($q) {
+                    $query->where('title', 'like', "%{$q}%")
+                          ->orWhereHas('author', fn($qa) => $qa->where('name', 'like', "%{$q}%"));
+                })
+                ->with('author')
+                ->limit(6)
+                ->get()
+                ->map(fn($b) => [
+                    'type'        => 'book',
+                    'url'         => route('books.show', $b->id),
+                    'title'       => $b->title,
+                    'author'      => $b->author->name ?? 'Unknown',
+                    'genre'       => $b->genre,
+                    'cover_image' => $b->cover_image ? Storage::url($b->cover_image) : null,
+                ]);
+        }
+
+        return response()->json($results);
     }
 }
