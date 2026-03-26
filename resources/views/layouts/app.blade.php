@@ -165,6 +165,8 @@
                     <div class="hidden md:flex items-center gap-4 border-r border-zinc-200 pr-3 mr-1">
                         @if(auth()->user()->role === 'author')
                             <a href="{{ route('author.dashboard') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">Dashboard</a>
+                        @elseif(auth()->user()->isAdmin())
+                            <a href="{{ route('admin.dashboard') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">Admin Panel</a>
                         @endif
                         <a href="{{ route('history') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">History</a>
                         <a href="{{ route('favorites') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">Saved</a>
@@ -286,3 +288,4 @@
     @stack('scripts')
 </body>
 </html>
+

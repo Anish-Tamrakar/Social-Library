@@ -8,8 +8,21 @@ use App\Models\Book;
 use App\Models\User;
 
 Route::get('/', function () {
-    $featuredBooks = Book::with('author')->where('status', 'published')->latest()->take(4)->get();
-    $popularAuthors = User::where('role', 'author')->withCount('books')->orderByDesc('books_count')->take(4)->get();
+    $featuredBooks = Book::with('author')
+        ->where('status', 'published')
+        ->where('admin_status', 'approved')
+        ->orderByDesc('is_featured')
+        ->latest()
+        ->take(4)
+        ->get();
+
+    $popularAuthors = User::where('role', 'author')
+        ->withCount(['books' => function ($query) {
+            $query->where('status', 'published')->where('admin_status', 'approved');
+        }])
+        ->orderByDesc('books_count')
+        ->take(4)
+        ->get();
 
     return view('welcome', compact('featuredBooks', 'popularAuthors'));
 })->name('home');
@@ -37,7 +50,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/books/{book}/favorite', [BookController::class, 'toggleFavorite'])->name('books.favorite');
     Route::post('/books/{book}/rate', [BookController::class, 'rate'])->name('books.rate');
     Route::delete('/books/{book}/review', [BookController::class, 'deleteReview'])->name('books.review.delete');
+    Route::post('/ratings/{rating}/flag', [BookController::class, 'flagReview'])->name('ratings.flag');
     Route::post('/books', [BookController::class, 'store'])->name('books.store');
     Route::delete('/books/{book}', [BookController::class, 'destroy'])->name('books.destroy');
     Route::post('/authors/{user}/donate', [BookController::class, 'donate'])->name('authors.donate');
+});
+
+
+// Admin Routes
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/books/pending', [\App\Http\Controllers\AdminController::class, 'pendingBooks'])->name('books.pending');
+    Route::get('/books/manage', [\App\Http\Controllers\AdminController::class, 'manageBooks'])->name('books.manage');
+    Route::post('/books/{book}/approve', [\App\Http\Controllers\AdminController::class, 'approveBook'])->name('books.approve');
+    Route::post('/books/{book}/reject', [\App\Http\Controllers\AdminController::class, 'rejectBook'])->name('books.reject');
+    Route::post('/books/{book}/toggle-featured', [\App\Http\Controllers\AdminController::class, 'toggleFeatured'])->name('books.toggle-featured');
+
+    Route::get('/ratings/flagged', [\App\Http\Controllers\AdminController::class, 'flaggedRatings'])->name('ratings.flagged');
+    Route::delete('/ratings/{rating}', [\App\Http\Controllers\AdminController::class, 'deleteRating'])->name('ratings.delete');
+    Route::post('/ratings/{rating}/unflag', [\App\Http\Controllers\AdminController::class, 'unflagRating'])->name('ratings.unflag');
 });

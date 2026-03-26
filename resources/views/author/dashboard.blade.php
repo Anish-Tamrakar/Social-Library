@@ -37,7 +37,7 @@
     <!-- Publications Table -->
     <div class="border border-zinc-200 rounded-lg overflow-hidden">
         <div class="px-6 py-4 border-b border-zinc-200 bg-zinc-50/50">
-            <h2 class="text-sm font-semibold text-zinc-900">Your Catalog</h2>
+            <h2 class="text-sm font-semibold text-zinc-900">Your Publications</h2>
         </div>
 
         @if(count($publishedBooks) > 0)
@@ -47,7 +47,8 @@
                     <tr class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-200">
                         <th class="px-6 py-3">Title</th>
                         <th class="px-6 py-3">Genre</th>
-                        <th class="px-6 py-3">Published</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Date</th>
                         <th class="px-6 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -67,6 +68,15 @@
                                 </span>
                             @else
                                 <span class="text-xs text-zinc-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4">
+                            @if($book->admin_status === 'approved')
+                                <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded">Live</span>
+                            @elseif($book->admin_status === 'pending')
+                                <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded">Reviewing</span>
+                            @else
+                                <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">Rejected</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-sm text-zinc-500">
@@ -186,3 +196,4 @@
     </div>
 </div>
 @endsection
+

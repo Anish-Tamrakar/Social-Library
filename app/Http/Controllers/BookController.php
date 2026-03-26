@@ -17,7 +17,7 @@ class BookController extends Controller
         $tab = $request->get('tab', 'books');
 
         // Books query
-        $query = Book::where('status', 'published');
+        $query = Book::where('status', 'published')->where('admin_status', 'approved');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -57,6 +57,12 @@ class BookController extends Controller
             abort(404);
         }
 
+        if ($book->admin_status !== 'approved') {
+            if (!Auth::check() || (Auth::id() !== $book->author_id && !Auth::user()->isAdmin())) {
+                abort(404);
+            }
+        }
+
         $ratings    = $book->ratings()->with('user')->latest()->get();
         $userRating = Auth::check() ? $ratings->firstWhere('user_id', Auth::id()) : null;
         $avgRating  = $ratings->count() > 0 ? round($ratings->avg('rating'), 1) : null;
@@ -68,6 +74,12 @@ class BookController extends Controller
     {
         if ($book->status !== 'published') {
             abort(404);
+        }
+
+        if ($book->admin_status !== 'approved') {
+            if (!Auth::check() || (Auth::id() !== $book->author_id && !Auth::user()->isAdmin())) {
+                abort(404);
+            }
         }
 
         $lastPage = 0;
@@ -133,10 +145,11 @@ class BookController extends Controller
             'summary' => $request->description,
             'author_id' => Auth::id(),
             'status' => 'published',
+            'admin_status' => 'pending', // Requires admin approval
             'pdf_path' => $pdfPath,
         ]);
 
-        return back()->with('success', 'Book created successfully.');
+        return back()->with('success', 'Book submitted for approval. It will be published once an admin approves it.');
     }
 
     public function destroy(Book $book)
@@ -167,6 +180,12 @@ class BookController extends Controller
     {
         Rating::where('user_id', Auth::id())->where('book_id', $book->id)->delete();
         return back();
+    }
+
+    public function flagReview(Rating $rating)
+    {
+        $rating->update(['is_flagged' => true]);
+        return back()->with('review_success', 'Review flagged for moderation.');
     }
 
     public function suggestions(Request $request)

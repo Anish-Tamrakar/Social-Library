@@ -15,9 +15,10 @@ class AuthorController extends Controller
         }
 
         $books = Book::where('author_id', $user->id)->get();
-        $publishedBooks = $books->where('status', 'published');
-        $pendingBooks = $books->where('status', 'pending');
-        $rejectedBooks = $books->where('status', 'rejected');
+        // Here status means author's published/draft status, admin_status is the admin approval
+        $publishedBooks = $books->where('status', 'published')->where('admin_status', 'approved');
+        $pendingBooks = $books->where('admin_status', 'pending');
+        $rejectedBooks = $books->where('admin_status', 'rejected');
 
         // Mock analytics data for simplicity
         $analytics = [

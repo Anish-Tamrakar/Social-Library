@@ -44,6 +44,8 @@ class DatabaseSeeder extends Seeder
                 'genre' => ['Fantasy', 'Sci-Fi', 'Mystery', 'Romance', 'Thriller'][rand(0, 4)],
                 'pdf_path' => 'sample.pdf',
                 'status' => 'published',
+                'admin_status' => 'approved',
+                'is_featured' => rand(0, 1) === 1,
             ]);
         }
     }

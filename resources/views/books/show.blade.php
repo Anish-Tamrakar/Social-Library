@@ -289,6 +289,18 @@
                                 @if($review->review)
                                     <p class="text-sm text-zinc-600 leading-relaxed">{{ $review->review }}</p>
                                 @endif
+                                @auth
+                                    @if(Auth::id() !== $review->user_id)
+                                    <div class="mt-2 text-right">
+                                        <form action="{{ route('ratings.flag', $review) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-xs text-zinc-400 hover:text-rose-500 transition-colors" title="Flag as inappropriate">
+                                                Flag Review
+                                            </button>
+                                        </form>
+                                    </div>
+                                    @endif
+                                @endauth
                             </div>
                         </div>
                         @endforeach
