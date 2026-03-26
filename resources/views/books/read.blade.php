@@ -114,6 +114,9 @@
     const url        = @json(asset('storage/' . $book->pdf_path));
     const bookTitle  = @json($book->title);
     const bookAuthor = @json($book->author->name ?? 'Unknown Author');
+    const updateProgressUrl = @json(route('books.progress', $book->id));
+    const csrfToken = "{{ csrf_token() }}";
+    const lastPageIdx = @json($lastPage ?? 0);
 
     // ── DOM refs ────────────────────────────────────────────────────────────
 
@@ -325,7 +328,7 @@
                 mobileScrollSupport: false,
                 useMouseEvents  : true,
                 flippingTime    : 700,
-                startPage       : 0,
+                startPage       : lastPageIdx,
                 drawShadow      : true,
                 usePortrait     : false,
                 autoSize        : false,
@@ -337,12 +340,25 @@
                 updatePageInfo(e.data);
                 syncNavButtons();
                 renderNearby(e.data);
+
+                // Update progress on server
+                if (updateProgressUrl) {
+                    fetch(updateProgressUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({ page: e.data })
+                    }).catch(err => console.error('Error updating progress:', err));
+                }
             });
 
             // Initial setup
-            renderNearby(0);
-            renderNearby(2);
-            renderNearby(3);
+            renderNearby(lastPageIdx);
+            renderNearby(lastPageIdx + 1);
+            renderNearby(lastPageIdx + 2);
+            updatePageInfo(lastPageIdx);
 
             window.addEventListener('resize', resizeBook);
             applyScale();

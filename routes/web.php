@@ -32,6 +32,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [\App\Http\Controllers\UserController::class, 'settings'])->name('settings');
     Route::post('/settings', [\App\Http\Controllers\UserController::class, 'updateSettings'])->name('settings.update');
     Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
+    Route::get('/history', [BookController::class, 'history'])->name('history');
+    Route::post('/books/{book}/progress', [BookController::class, 'updateProgress'])->name('books.progress');
     Route::post('/books/{book}/favorite', [BookController::class, 'toggleFavorite'])->name('books.favorite');
     Route::post('/books/{book}/rate', [BookController::class, 'rate'])->name('books.rate');
     Route::delete('/books/{book}/review', [BookController::class, 'deleteReview'])->name('books.review.delete');

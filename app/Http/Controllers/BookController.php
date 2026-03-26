@@ -70,20 +70,32 @@ class BookController extends Controller
             abort(404);
         }
 
+        $lastPage = 0;
+
         if (Auth::check()) {
-            ReadingHistory::updateOrCreate(
+            $history = ReadingHistory::updateOrCreate(
                 ['user_id' => Auth::id(), 'book_id' => $book->id],
                 ['opened_at' => now()]
             );
+            $lastPage = $history->current_page ?? 0;
         }
 
-        return view('books.read', compact('book'));
+        return view('books.read', compact('book', 'lastPage'));
     }
 
     public function favorites()
     {
         $favorites = Auth::user()->favorites()->with('book', 'author')->get();
         return view('books.favorites', compact('favorites'));
+    }
+
+    public function history()
+    {
+        $history = ReadingHistory::where('user_id', Auth::id())
+            ->with(['book', 'book.author'])
+            ->orderBy('opened_at', 'desc')
+            ->get();
+        return view('books.history', compact('history'));
     }
 
     public function toggleFavorite(Request $request, Book $book)
@@ -202,5 +214,18 @@ class BookController extends Controller
         }
 
         return response()->json($results);
+    }
+
+    public function updateProgress(Request $request, Book $book)
+    {
+        if (Auth::check()) {
+            $page = $request->input('page');
+            ReadingHistory::updateOrCreate(
+                ['user_id' => Auth::id(), 'book_id' => $book->id],
+                ['current_page' => $page, 'opened_at' => now()]
+            );
+            return response()->json(['success' => true]);
+        }
+        return response()->json(['success' => false], 401);
     }
 }

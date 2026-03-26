@@ -166,6 +166,7 @@
                         @if(auth()->user()->role === 'author')
                             <a href="{{ route('author.dashboard') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">Dashboard</a>
                         @endif
+                        <a href="{{ route('history') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">History</a>
                         <a href="{{ route('favorites') }}" class="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">Saved</a>
                     </div>
 
@@ -186,6 +187,7 @@
                                 <p class="text-xs text-zinc-400 truncate">{{ auth()->user()->email }}</p>
                             </div>
                             <a href="{{ route('profile') }}" class="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors">Profile</a>
+                            <a href="{{ route('history') }}" class="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors">History</a>
                             <a href="{{ route('settings') }}" class="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors">Settings</a>
                             <form method="POST" action="{{ route('logout') }}" class="border-t border-zinc-100 mt-1">
                                 @csrf

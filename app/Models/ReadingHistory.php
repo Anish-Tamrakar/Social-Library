@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ReadingHistory extends Model
 {
-    protected $fillable = ['user_id', 'book_id', 'opened_at'];
+    protected $fillable = ['user_id', 'book_id', 'opened_at', 'current_page'];
 
     public function user()
     {
